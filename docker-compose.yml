@@ -1,0 +1,59 @@
+# =============================================================================
+# NetControl — orkestrasi produksi (aplikasi + database)
+#
+# CARA PAKAI:
+#   1. Siapkan file .env di root proyek (salin dari .env.example, lalu isi semua
+#      nilai WAJIB). File .env TIDAK ikut masuk ke dalam image (lihat
+#      .dockerignore) — nilainya disuntikkan ke container lewat `env_file` di
+#      bawah, jadi rahasia tetap berada di host, bukan di dalam image.
+#   2. Untuk database bawaan, gunakan koneksi ini di .env:
+#        DATABASE_URL="postgresql://netcontrol:netcontrol@db:5432/netcontrol?schema=public"
+#      (host-nya `db`, nama service di bawah, BUKAN localhost).
+#   3. Jalankan:  docker compose up -d --build
+#   4. Terapkan skema database (hanya sekali / setiap ada migrasi baru):
+#        docker compose exec app npm run db:migrate
+#   5. Buat akun owner pertama (membutuhkan SEED_OWNER_* di .env):
+#        docker compose exec app npm run db:seed
+#   6. Buka http://<host>:4755  (letakkan reverse proxy TLS di depannya).
+#
+# Lihat log:   docker compose logs -f app
+# Hentikan:    docker compose down
+# Data database tetap aman di volume `pgdata` saat container dihentikan.
+# =============================================================================
+
+services:
+  app:
+    build: .
+    container_name: netcontrol-app
+    ports:
+      - "4755:4755"
+    env_file:
+      - .env
+    environment:
+      # NODE_ENV selalu production di container; mengaktifkan cookie `secure`.
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: netcontrol-db
+    environment:
+      POSTGRES_USER: netcontrol
+      POSTGRES_PASSWORD: netcontrol
+      POSTGRES_DB: netcontrol
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Port 5432 SENGAJA tidak diterbitkan ke host: database hanya boleh
+    # terjangkau dari container `app` lewat jaringan internal Compose.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netcontrol -d netcontrol"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:

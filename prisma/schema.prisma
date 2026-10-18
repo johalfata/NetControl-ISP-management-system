@@ -1,0 +1,1145 @@
+// =============================================================================
+// NetControl — Skema database
+// Konvensi uang : SEMUA nominal disimpan sebagai BIGINT dalam satuan minor
+//                 (untuk IDR: rupiah, tanpa desimal). Tidak pernah float.
+// Konvensi waktu: disimpan UTC (timestamptz), ditampilkan sesuai timezone setelan.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enum
+// ---------------------------------------------------------------------------
+
+enum Role {
+  OWNER
+  ADMIN
+  BILLING
+
+  TECHNICIAN
+  READONLY
+}
+
+enum AuthMethod {
+  PLAIN
+  TLS
+  SNMP
+  HTTP
+}
+
+enum ActorType {
+  USER
+  PORTAL
+  SYSTEM
+  WEBHOOK
+}
+
+enum CustomerStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum InfraNodeType {
+  OLT
+  ODC
+  ODP
+  SPLITTER
+  ONT
+  ROUTER
+  SWITCH
+  RADIO
+  OTHER
+}
+
+enum InfraLinkType {
+  FEEDER
+  DISTRIBUTION
+  DROP
+  ETHERNET
+  UPLINK
+  OTHER
+}
+
+enum DeviceStatus {
+  UNKNOWN
+  UP
+  DOWN
+  MAINTENANCE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum PlanChangeType {
+  NEW
+  UPGRADE
+  DOWNGRADE
+  PLAN_CHANGE
+  REACTIVATE
+  CANCEL
+}
+
+enum PlanChangeMode {
+  IMMEDIATE
+  NEXT_CYCLE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  VOID
+}
+
+enum InvoiceSource {
+  AUTO
+  MANUAL
+}
+
+enum InvoiceLineKind {
+  SUBSCRIPTION
+  ADDON
+  PENALTY
+  ADJUSTMENT
+  OTHER
+}
+
+enum PaymentStatus {
+  POSTED
+  VOID
+}
+
+enum PaymentMethodType {
+  CASH
+  TRANSFER
+  EWALLET
+  OTHER
+}
+
+enum WanType {
+  STARLINK
+  DEDICATED
+  OTHER
+}
+
+enum IncidentType {
+  DEVICE_DOWN
+  WAN_DOWN
+  HIGH_LATENCY
+  HIGH_UTILIZATION
+  OPTICAL_DEGRADED
+  OTHER
+}
+
+enum IncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum Severity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketSource {
+  STAFF
+  PORTAL
+  WEBHOOK
+}
+
+enum CommentAuthorType {
+  STAFF
+  PORTAL
+  SYSTEM
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  ACCEPTED
+  DELIVERED
+  FAILED
+  UNKNOWN
+  SKIPPED
+}
+
+enum NotificationChannel {
+  WHATSAPP
+}
+
+enum JobStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+enum JobTrigger {
+  SCHEDULE
+  MANUAL
+  WEBHOOK
+  SYSTEM
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSED
+  REJECTED
+  FAILED
+}
+
+enum ServiceNoticeAudience {
+  ALL
+  CUSTOMER
+}
+
+// ---------------------------------------------------------------------------
+// Autentikasi & RBAC
+// ---------------------------------------------------------------------------
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String
+  passwordHash       String
+  role               Role      @default(READONLY)
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  failedLoginCount   Int       @default(0)
+  lockedUntil        DateTime? @db.Timestamptz(3)
+  lastLoginAt        DateTime? @db.Timestamptz(3)
+  phone              String?
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+  createdById        String?
+
+  sessions            Session[]
+  auditLogs           AuditLog[]         @relation("AuditActor")
+  createdCustomers    Customer[]         @relation("CustomerCreatedBy")
+  invoicesCreated     Invoice[]          @relation("InvoiceCreatedBy")
+  invoicesVoided      Invoice[]          @relation("InvoiceVoidedBy")
+  paymentsReceived    Payment[]          @relation("PaymentReceivedBy")
+  paymentsVoided      Payment[]          @relation("PaymentVoidedBy")
+  expensesCreated     Expense[]          @relation("ExpenseCreatedBy")
+  ticketsAssigned     Ticket[]           @relation("TicketAssignee")
+  ticketComments      TicketComment[]    @relation("TicketCommentAuthor")
+  ticketEvents        TicketEvent[]
+  subscriptionChanges Subscription[]     @relation("SubscriptionActor")
+  settingsUpdated     Setting[]
+  secretSettings      SecretSetting[]
+  settingHistories    SettingHistory[]
+  planPriceChanges    ServicePlanPrice[] @relation("PlanPriceActor")
+  incidentsAcked      Incident[]         @relation("IncidentAcknowledgedBy")
+  noticesCreated      ServiceNotice[]
+  createdBy           User?              @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers        User[]             @relation("UserCreatedBy")
+
+  @@index([role, isActive])
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz(3)
+  ip        String?
+  userAgent String?
+  revokedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model CustomerPortalUser {
+  id                 String    @id @default(cuid())
+  customerId         String    @unique
+  email              String    @unique
+  passwordHash       String
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  failedLoginCount   Int       @default(0)
+  lockedUntil        DateTime? @db.Timestamptz(3)
+  lastLoginAt        DateTime? @db.Timestamptz(3)
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+
+  customer Customer                @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  sessions CustomerPortalSession[]
+  comments TicketComment[]         @relation("TicketCommentPortalAuthor")
+
+  @@index([isActive])
+}
+
+model CustomerPortalSession {
+  id           String    @id @default(cuid())
+  portalUserId String
+  tokenHash    String    @unique
+  expiresAt    DateTime  @db.Timestamptz(3)
+  ip           String?
+  userAgent    String?
+  revokedAt    DateTime? @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+
+  portalUser CustomerPortalUser @relation(fields: [portalUserId], references: [id], onDelete: Cascade)
+
+  @@index([portalUserId])
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  actorType  ActorType @default(SYSTEM)
+  actorId    String?
+  actorLabel String
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([actorId])
+}
+
+// ---------------------------------------------------------------------------
+// Konfigurasi (DB-backed settings) + riwayat
+// ---------------------------------------------------------------------------
+
+model Setting {
+  key         String   @id
+  value       Json
+  category    String
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  updatedById String?
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([category])
+}
+
+model SecretSetting {
+  key         String   @id
+  ciphertext  String
+  iv          String
+  authTag     String
+  fingerprint String
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  updatedById String?
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+model SettingHistory {
+  id          String   @id @default(cuid())
+  key         String
+  oldValue    Json?
+  newValue    Json?
+  isSecretKey Boolean  @default(false)
+  changedById String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  changedBy User? @relation(fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([key, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Counter atomik (penomoran invoice, kode customer, dsb.)
+// ---------------------------------------------------------------------------
+
+model Counter {
+  id        String   @id @default(cuid())
+  scope     String
+  periodKey String
+  lastValue Int      @default(0)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([scope, periodKey])
+}
+
+// ---------------------------------------------------------------------------
+// Customer, paket, langganan
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id               String         @id @default(cuid())
+  code             String         @unique
+  name             String
+  email            String?
+  phone            String?
+  address          String?
+  city             String?
+  district         String?
+  postalCode       String?
+  latitude         Float?
+  longitude        Float?
+  notes            String?
+  status           CustomerStatus @default(ACTIVE)
+  installationDate DateTime?      @db.Timestamptz(3)
+  archivedAt       DateTime?      @db.Timestamptz(3)
+
+  pppoeUsername String? @unique
+  routerId      String?
+  onuNodeId     String?
+  odpNodeId     String?
+
+  planId            String?
+  planStartedAt     DateTime? @db.Timestamptz(3)
+  billingDay        Int?
+  dueDaysAfterIssue Int?
+  autoSuspend       Boolean   @default(true)
+
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  createdById String?
+
+  router        Router?               @relation(fields: [routerId], references: [id], onDelete: SetNull)
+  plan          ServicePlan?          @relation(fields: [planId], references: [id], onDelete: SetNull)
+  onuNode       InfraNode?            @relation("CustomerOnu", fields: [onuNodeId], references: [id], onDelete: SetNull)
+  odpNode       InfraNode?            @relation("CustomerOdp", fields: [odpNodeId], references: [id], onDelete: SetNull)
+  createdBy     User?                 @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  portalUser    CustomerPortalUser?
+  subscriptions Subscription[]
+  invoices      Invoice[]
+  payments      Payment[]
+  tickets       Ticket[]
+  notifications NotificationMessage[]
+  notices       ServiceNotice[]
+
+  @@index([status, name])
+  @@index([planId])
+  @@index([routerId])
+  @@index([billingDay])
+}
+
+model ServicePlan {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  name              String
+  description       String?
+  priceMinor        BigInt
+  downloadKbps      Int
+  uploadKbps        Int
+  billingPeriodDays Int      @default(30)
+  isActive          Boolean  @default(true)
+  isArchived        Boolean  @default(false)
+  sortOrder         Int      @default(0)
+  notes             String?
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+
+  customers     Customer[]
+  subscriptions Subscription[]
+  priceHistory  ServicePlanPrice[]
+  invoices      Invoice[]
+
+  @@index([isActive, isArchived])
+}
+
+model ServicePlanPrice {
+  id            String   @id @default(cuid())
+  planId        String
+  priceMinor    BigInt
+  effectiveFrom DateTime @default(now()) @db.Timestamptz(3)
+  createdById   String?
+  note          String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  plan      ServicePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  createdBy User?       @relation("PlanPriceActor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([planId, effectiveFrom])
+}
+
+model Subscription {
+  id           String             @id @default(cuid())
+  customerId   String
+  planId       String
+  priceMinor   BigInt
+  downloadKbps Int
+  uploadKbps   Int
+  status       SubscriptionStatus @default(ACTIVE)
+  changeType   PlanChangeType     @default(NEW)
+  changeMode   PlanChangeMode     @default(IMMEDIATE)
+  startedAt    DateTime           @db.Timestamptz(3)
+  endedAt      DateTime?          @db.Timestamptz(3)
+  appliedAt    DateTime?          @db.Timestamptz(3)
+  notes        String?
+  createdAt    DateTime           @default(now()) @db.Timestamptz(3)
+  createdById  String?
+
+  customer  Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  plan      ServicePlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  createdBy User?       @relation("SubscriptionActor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([customerId, status])
+  @@index([planId])
+  @@index([startedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Billing
+// ---------------------------------------------------------------------------
+
+model Invoice {
+  id               String        @id @default(cuid())
+  number           String        @unique
+  customerId       String
+  planId           String?
+  subscriptionId   String?
+  status           InvoiceStatus @default(ISSUED)
+  source           InvoiceSource @default(AUTO)
+  issueDate        DateTime      @db.Timestamptz(3)
+  dueDate          DateTime      @db.Timestamptz(3)
+  periodStart      DateTime      @db.Timestamptz(3)
+  periodEnd        DateTime      @db.Timestamptz(3)
+  billingPeriodKey String?
+  subtotalMinor    BigInt
+  discountMinor    BigInt        @default(0)
+  taxMinor         BigInt        @default(0)
+  totalMinor       BigInt
+  paidMinor        BigInt        @default(0)
+  notes            String?
+  idempotencyKey   String?       @unique
+  voidedAt         DateTime?     @db.Timestamptz(3)
+  voidedById       String?
+  voidReason       String?
+  createdAt        DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime      @updatedAt @db.Timestamptz(3)
+  createdById      String?
+
+  customer      Customer              @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  plan          ServicePlan?          @relation(fields: [planId], references: [id], onDelete: SetNull)
+  createdBy     User?                 @relation("InvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  voidedBy      User?                 @relation("InvoiceVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+  lines         InvoiceLine[]
+  allocations   PaymentAllocation[]
+  notifications NotificationMessage[]
+
+  @@unique([subscriptionId, billingPeriodKey], name: "invoice_subscription_period")
+  @@index([customerId, status])
+  @@index([status, dueDate])
+  @@index([issueDate])
+  @@index([billingPeriodKey])
+}
+
+model InvoiceLine {
+  id             String          @id @default(cuid())
+  invoiceId      String
+  kind           InvoiceLineKind @default(SUBSCRIPTION)
+  description    String
+  quantity       Int             @default(1)
+  unitPriceMinor BigInt
+  amountMinor    BigInt
+  sortOrder      Int             @default(0)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model PaymentMethod {
+  id        String            @id @default(cuid())
+  code      String            @unique
+  name      String
+  type      PaymentMethodType @default(CASH)
+  isActive  Boolean           @default(true)
+  sortOrder Int               @default(0)
+  notes     String?
+
+  payments Payment[]
+  expenses Expense[]
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  number         String        @unique
+  customerId     String
+  methodId       String?
+  amountMinor    BigInt
+  status         PaymentStatus @default(POSTED)
+  paidAt         DateTime      @db.Timestamptz(3)
+  reference      String?
+  proofUrl       String?
+  notes          String?
+  idempotencyKey String?       @unique
+  voidedAt       DateTime?     @db.Timestamptz(3)
+  voidedById     String?
+  voidReason     String?
+  receivedById   String?
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+
+  customer    Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  method      PaymentMethod?      @relation(fields: [methodId], references: [id], onDelete: SetNull)
+  receivedBy  User?               @relation("PaymentReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
+  voidedBy    User?               @relation("PaymentVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+  allocations PaymentAllocation[]
+
+  @@index([customerId, status])
+  @@index([paidAt])
+  @@index([status])
+}
+
+model PaymentAllocation {
+  id          String   @id @default(cuid())
+  paymentId   String
+  invoiceId   String
+  amountMinor BigInt
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([paymentId])
+}
+
+model ExpenseCategory {
+  id       String  @id @default(cuid())
+  code     String  @unique
+  name     String
+  isActive Boolean @default(true)
+  notes    String?
+
+  expenses Expense[]
+
+  @@index([isActive])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Timestamptz(3)
+  categoryId  String
+  amountMinor BigInt
+  description String
+  vendor      String?
+  reference   String?
+  methodId    String?
+  createdById String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  category  ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  method    PaymentMethod?  @relation(fields: [methodId], references: [id], onDelete: SetNull)
+  createdBy User?           @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([date])
+  @@index([categoryId])
+}
+
+// ---------------------------------------------------------------------------
+// MikroTik / PPPoE
+// ---------------------------------------------------------------------------
+
+model Router {
+  id                String       @id @default(cuid())
+  code              String       @unique
+  name              String
+  host              String
+  apiPort           Int          @default(8728)
+  username          String
+  useTls            Boolean      @default(false)
+  authMethod        AuthMethod   @default(PLAIN)
+  secretCiphertext  String?
+  secretIv          String?
+  secretAuthTag     String?
+  secretFingerprint String?
+  isActive          Boolean      @default(true)
+  pollIntervalSec   Int          @default(60)
+  notes             String?
+  lastStatus        DeviceStatus @default(UNKNOWN)
+  lastCheckedAt     DateTime?    @db.Timestamptz(3)
+  lastError         String?
+  identity          String?
+  version           String?
+  uptimeSec         Int?
+  createdAt         DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime     @updatedAt @db.Timestamptz(3)
+
+  customers        Customer[]
+  sessions         PppoeSession[]
+  secrets          PppoeSecret[]
+  metrics          RouterMetric[]
+  interfaceMetrics InterfaceMetric[]
+  wanLinks         WanLink[]
+  tickets          Ticket[]
+
+  @@index([isActive])
+}
+
+model PppoeSession {
+  id         String   @id @default(cuid())
+  routerId   String
+  sessionKey String
+  username   String
+  service    String?
+  callerId   String?
+  address    String?
+  uptimeSec  Int?
+  bytesIn    BigInt   @default(0)
+  bytesOut   BigInt   @default(0)
+  isActive   Boolean  @default(true)
+  capturedAt DateTime @db.Timestamptz(3)
+
+  router Router @relation(fields: [routerId], references: [id], onDelete: Cascade)
+
+  @@unique([routerId, sessionKey])
+  @@index([routerId, isActive])
+  @@index([username])
+}
+
+model PppoeSecret {
+  id            String   @id @default(cuid())
+  routerId      String
+  name          String
+  profile       String?
+  service       String?
+  remoteAddress String?
+  disabled      Boolean  @default(false)
+  comment       String?
+  lastSyncedAt  DateTime @db.Timestamptz(3)
+
+  router Router @relation(fields: [routerId], references: [id], onDelete: Cascade)
+
+  @@unique([routerId, name])
+  @@index([routerId, disabled])
+}
+
+model RouterMetric {
+  id             String   @id @default(cuid())
+  routerId       String
+  capturedAt     DateTime @db.Timestamptz(3)
+  activeSessions Int?
+  cpuLoadPct     Int?
+  freeMemoryPct  Int?
+  uptimeSec      Int?
+  rxBytes        BigInt?
+  txBytes        BigInt?
+
+  router Router @relation(fields: [routerId], references: [id], onDelete: Cascade)
+
+  @@index([routerId, capturedAt])
+  @@index([capturedAt])
+}
+
+// ---------------------------------------------------------------------------
+// WAN & bandwidth
+// ---------------------------------------------------------------------------
+
+model WanLink {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  name              String
+  type              WanType  @default(OTHER)
+  provider          String?
+  routerId          String?
+  interfaceName     String?
+  capacityDownKbps  Int?
+  capacityUpKbps    Int?
+  ipAddress         String?
+  monitorEnabled    Boolean  @default(true)
+  latencyTargetHost String?
+  isActive          Boolean  @default(true)
+  notes             String?
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+
+  router           Router?           @relation(fields: [routerId], references: [id], onDelete: SetNull)
+  interfaceMetrics InterfaceMetric[]
+
+  @@index([isActive])
+}
+
+model InterfaceMetric {
+  id            String   @id @default(cuid())
+  routerId      String
+  wanLinkId     String?
+  interfaceName String
+  capturedAt    DateTime @db.Timestamptz(3)
+  rxBytes       BigInt?
+  txBytes       BigInt?
+  rxRateBps     BigInt?
+  txRateBps     BigInt?
+  linkUp        Boolean?
+  latencyMs     Int?
+  packetLossPct Int?
+
+  router  Router   @relation(fields: [routerId], references: [id], onDelete: Cascade)
+  wanLink WanLink? @relation(fields: [wanLinkId], references: [id], onDelete: SetNull)
+
+  @@unique([routerId, interfaceName, capturedAt])
+  @@index([wanLinkId, capturedAt])
+  @@index([capturedAt])
+}
+
+model Incident {
+  id               String         @id @default(cuid())
+  type             IncidentType
+  severity         Severity       @default(WARNING)
+  status           IncidentStatus @default(OPEN)
+  subjectType      String
+  subjectId        String?
+  title            String
+  description      String?
+  startedAt        DateTime       @db.Timestamptz(3)
+  acknowledgedAt   DateTime?      @db.Timestamptz(3)
+  acknowledgedById String?
+  resolvedAt       DateTime?      @db.Timestamptz(3)
+  dedupeKey        String?        @unique
+  ticketId         String?
+  metadata         Json?
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+
+  acknowledgedBy User? @relation("IncidentAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  @@index([status, startedAt])
+  @@index([subjectType, subjectId])
+}
+
+model AlertRule {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  name        String
+  type        IncidentType
+  targetType  String?
+  targetId    String?
+  comparator  String       @default(">=")
+  threshold   Float
+  severity    Severity     @default(WARNING)
+  cooldownMin Int          @default(30)
+  enabled     Boolean      @default(true)
+  notes       String?
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+
+  @@index([enabled, type])
+}
+
+// ---------------------------------------------------------------------------
+// FTTH / OLT inventory + topologi
+// ---------------------------------------------------------------------------
+
+model InfraNode {
+  id                   String        @id @default(cuid())
+  code                 String        @unique
+  name                 String
+  type                 InfraNodeType
+  vendor               String?
+  model                String?
+  serialNumber         String?
+  ipAddress            String?
+  apiPort              Int?
+  adapterKey           String?
+  apiAuthMethod        AuthMethod    @default(PLAIN)
+  apiSecretCiphertext  String?
+  apiSecretIv          String?
+  apiSecretAuthTag     String?
+  apiSecretFingerprint String?
+  locationName         String?
+  latitude             Float?
+  longitude            Float?
+  parentId             String?
+  capacityPorts        Int?
+  usedPorts            Int?
+  status               DeviceStatus  @default(UNKNOWN)
+  capabilities         Json?
+  notes                String?
+  isActive             Boolean       @default(true)
+  lastCheckedAt        DateTime?     @db.Timestamptz(3)
+  lastError            String?
+  createdAt            DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime      @updatedAt @db.Timestamptz(3)
+
+  parent       InfraNode?    @relation("InfraHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     InfraNode[]   @relation("InfraHierarchy")
+  linksFrom    InfraLink[]   @relation("InfraLinkFrom")
+  linksTo      InfraLink[]   @relation("InfraLinkTo")
+  metrics      InfraMetric[]
+  customersOnu Customer[]    @relation("CustomerOnu")
+  customersOdp Customer[]    @relation("CustomerOdp")
+  tickets      Ticket[]
+
+  @@index([type, status])
+  @@index([parentId])
+}
+
+model InfraLink {
+  id         String        @id @default(cuid())
+  fromNodeId String
+  toNodeId   String
+  linkType   InfraLinkType @default(OTHER)
+  label      String?
+  capacity   String?
+  notes      String?
+  createdAt  DateTime      @default(now()) @db.Timestamptz(3)
+
+  fromNode InfraNode @relation("InfraLinkFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode   InfraNode @relation("InfraLinkTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([fromNodeId, toNodeId, linkType])
+  @@index([toNodeId])
+}
+
+model InfraMetric {
+  id           String   @id @default(cuid())
+  nodeId       String
+  kind         String
+  capturedAt   DateTime @db.Timestamptz(3)
+  status       String?
+  rxPowerDbm   Float?
+  txPowerDbm   Float?
+  temperatureC Float?
+  portSummary  Json?
+  raw          Json?
+
+  node InfraNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId, capturedAt])
+  @@index([capturedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Helpdesk
+// ---------------------------------------------------------------------------
+
+model TicketCategory {
+  id       String  @id @default(cuid())
+  code     String  @unique
+  name     String
+  isActive Boolean @default(true)
+
+  tickets Ticket[]
+}
+
+model Ticket {
+  id           String         @id @default(cuid())
+  number       String         @unique
+  customerId   String?
+  categoryId   String?
+  subject      String
+  description  String
+  priority     TicketPriority @default(NORMAL)
+  status       TicketStatus   @default(OPEN)
+  source       TicketSource   @default(STAFF)
+  assignedToId String?
+  createdById  String?
+  routerId     String?
+  deviceNodeId String?
+  incidentId   String?
+  slaDueAt     DateTime?      @db.Timestamptz(3)
+  resolvedAt   DateTime?      @db.Timestamptz(3)
+  closedAt     DateTime?      @db.Timestamptz(3)
+  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime       @updatedAt @db.Timestamptz(3)
+
+  customer      Customer?             @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  category      TicketCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  assignedTo    User?                 @relation("TicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  router        Router?               @relation(fields: [routerId], references: [id], onDelete: SetNull)
+  deviceNode    InfraNode?            @relation(fields: [deviceNodeId], references: [id], onDelete: SetNull)
+  comments      TicketComment[]
+  events        TicketEvent[]
+  notifications NotificationMessage[]
+
+  @@index([status, priority])
+  @@index([customerId])
+  @@index([assignedToId])
+  @@index([createdAt])
+}
+
+model TicketComment {
+  id                 String            @id @default(cuid())
+  ticketId           String
+  authorType         CommentAuthorType @default(STAFF)
+  authorUserId       String?
+  authorPortalUserId String?
+  body               String
+  isInternal         Boolean           @default(false)
+  createdAt          DateTime          @default(now()) @db.Timestamptz(3)
+
+  ticket           Ticket              @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorUser       User?               @relation("TicketCommentAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+  authorPortalUser CustomerPortalUser? @relation("TicketCommentPortalAuthor", fields: [authorPortalUserId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+}
+
+model TicketEvent {
+  id          String   @id @default(cuid())
+  ticketId    String
+  type        String
+  fromValue   String?
+  toValue     String?
+  actorUserId String?
+  note        String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Notifikasi
+// ---------------------------------------------------------------------------
+
+model NotificationTemplate {
+  id           String              @id @default(cuid())
+  code         String              @unique
+  channel      NotificationChannel @default(WHATSAPP)
+  name         String
+  subject      String?
+  bodyTemplate String
+  isActive     Boolean             @default(true)
+  description  String?
+  updatedAt    DateTime            @updatedAt @db.Timestamptz(3)
+
+  @@index([isActive])
+}
+
+model NotificationMessage {
+  id                String              @id @default(cuid())
+  channel           NotificationChannel @default(WHATSAPP)
+  templateCode      String
+  customerId        String?
+  invoiceId         String?
+  ticketId          String?
+  toAddress         String
+  body              String
+  status            NotificationStatus  @default(QUEUED)
+  provider          String?
+  providerMessageId String?
+  idempotencyKey    String              @unique
+  attempts          Int                 @default(0)
+  maxAttempts       Int                 @default(3)
+  lastError         String?
+  nextAttemptAt     DateTime?           @db.Timestamptz(3)
+  queuedAt          DateTime            @default(now()) @db.Timestamptz(3)
+  sentAt            DateTime?           @db.Timestamptz(3)
+  acceptedAt        DateTime?           @db.Timestamptz(3)
+  deliveredAt       DateTime?           @db.Timestamptz(3)
+  failedAt          DateTime?           @db.Timestamptz(3)
+  createdAt         DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime            @updatedAt @db.Timestamptz(3)
+
+  customer    Customer?             @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  invoice     Invoice?              @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  ticket      Ticket?               @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  attemptsLog NotificationAttempt[]
+
+  @@index([status, nextAttemptAt])
+  @@index([customerId, createdAt])
+  @@index([createdAt])
+}
+
+model NotificationAttempt {
+  id               String             @id @default(cuid())
+  messageId        String
+  attemptNo        Int
+  status           NotificationStatus
+  httpStatus       Int?
+  responseRedacted String?
+  error            String?
+  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
+
+  message NotificationMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId, attemptNo])
+}
+
+// ---------------------------------------------------------------------------
+// Job & webhook
+// ---------------------------------------------------------------------------
+
+model JobRun {
+  id             String     @id @default(cuid())
+  jobName        String
+  trigger        JobTrigger @default(SCHEDULE)
+  status         JobStatus  @default(RUNNING)
+  startedAt      DateTime   @default(now()) @db.Timestamptz(3)
+  finishedAt     DateTime?  @db.Timestamptz(3)
+  durationMs     Int?
+  itemsProcessed Int        @default(0)
+  result         Json?
+  error          String?
+  actorLabel     String?
+  idempotencyKey String?    @unique
+
+  @@index([jobName, startedAt])
+  @@index([status])
+}
+
+model WebhookDelivery {
+  id             String        @id @default(cuid())
+  source         String
+  eventType      String
+  replayKey      String        @unique
+  signatureValid Boolean       @default(false)
+  status         WebhookStatus @default(RECEIVED)
+  payload        Json?
+  error          String?
+  receivedAt     DateTime      @default(now()) @db.Timestamptz(3)
+  processedAt    DateTime?     @db.Timestamptz(3)
+
+  @@index([source, receivedAt])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Portal pelanggan
+// ---------------------------------------------------------------------------
+
+model ServiceNotice {
+  id          String                @id @default(cuid())
+  title       String
+  body        String
+  audience    ServiceNoticeAudience @default(ALL)
+  customerId  String?
+  publishedAt DateTime              @default(now()) @db.Timestamptz(3)
+  expiresAt   DateTime?             @db.Timestamptz(3)
+  isActive    Boolean               @default(true)
+  createdById String?
+
+  customer  Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([isActive, publishedAt])
+}

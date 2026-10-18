@@ -1,0 +1,36 @@
+# Dependency sudah dipasang ulang di dalam image; hasil build dibawa dari
+# stage build. Mengecualikannya memperkecil image dan mencegah biner host
+# (yang mungkin berbeda arsitekturnya) ikut tersalin.
+node_modules
+node_modules/**/*
+
+# Artefak build sebelumnya (dibangun ulang di dalam image).
+.next
+out
+build
+dist
+coverage
+
+# Data & rahasia — TIDAK boleh terbakar ke dalam image.
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.pgdata
+pgdata
+backups
+*.log
+npm-debug.log*
+
+# Cache & file build sementara.
+.vitest
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+
+# File Docker itu sendiri tidak diperlukan di dalam image.
+Dockerfile
+.dockerignore
+docker-compose.yml

@@ -1,0 +1,69 @@
+{
+  "name": "netcontrol",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NetControl - Sistem manajemen ISP (Billing, PPPoE/MikroTik, WAN, FTTH, Helpdesk, Notifikasi)",
+  "scripts": {
+    "dev": "next dev -p 4755 -H 0.0.0.0",
+    "build": "prisma generate && next build",
+    "start": "next start -p 4755 -H 0.0.0.0",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
+    "dev:db": "node scripts/dev-postgres.mjs",
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run build"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "lucide-react": "^1.56.0",
+    "next": "15.5.27",
+    "node-routeros": "^1.6.9",
+    "papaparse": "^5.7.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "recharts": "^3.10.1",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.3.0",
+    "@types/papaparse": "^5.3.16",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "eslint": "^9.35.0",
+    "eslint-config-next": "15.5.27",
+    "prisma": "6.19.3",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "allowScripts": {
+    "prisma@6.19.3": true,
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "esbuild@0.28.2": true,
+    "@embedded-postgres/linux-x64@18.4.0-beta.17": true,
+    "unrs-resolver@1.12.2": true
+  }
+}
