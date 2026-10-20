@@ -41,4 +41,4 @@ COPY --from=build /app/next.config.ts ./next.config.ts
 USER node
 EXPOSE 4755
 
-CMD ["sh", "-c", "npm run db:migrate && npm start"]
+CMD ["sh", "-c", "npm run db:migrate && npm run db:seed && npm start"]
