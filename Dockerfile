@@ -35,6 +35,7 @@ RUN npm ci --omit=dev \
  && rm -rf /root/.npm
 
 COPY --from=build /app/.next ./.next
+COPY --from=build /app/src ./src
 COPY --from=build /app/next.config.ts ./next.config.ts
 
 # Jalankan sebagai user non-root bawaan image Node.
