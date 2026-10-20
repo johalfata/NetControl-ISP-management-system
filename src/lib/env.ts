@@ -17,6 +17,10 @@ const envSchema = z.object({
   SEED_OWNER_EMAIL: z.string().email().optional(),
   SEED_OWNER_PASSWORD: z.string().min(8).optional(),
   SEED_OWNER_NAME: z.string().min(1).optional(),
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
+  SUPABASE_SECRET_KEY: z.string().optional(),
+  SUPABASE_JWKS_URL: z.string().url().optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

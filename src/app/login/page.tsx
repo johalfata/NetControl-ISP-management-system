@@ -36,43 +36,43 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
+    <div className="min-h-[100dvh] bg-[#09090b] flex items-center justify-center p-4 selection:bg-teal-500 selection:text-white">
+      <div className="max-w-md w-full bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-8 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-teal-600 flex items-center justify-center text-white font-bold text-xl mb-3 shadow-lg shadow-teal-900/50">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-slate-950 font-extrabold text-2xl mb-4 shadow-lg shadow-teal-500/25 ring-1 ring-white/25">
             NC
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">NetControl Admin</h1>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">NetControl Admin</h1>
           <p className="text-sm text-slate-400 mt-1">Sistem Manajemen ISP Terpadu</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm font-medium animate-in fade-in duration-200">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5 uppercase tracking-wider">Email</label>
+            <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Email Administrator</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-teal-500 transition-colors text-sm"
+              className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all text-sm font-medium"
               placeholder="admin@netcontrol.local"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5 uppercase tracking-wider">Password</label>
+            <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Password</label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-teal-500 transition-colors text-sm"
+              className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all text-sm font-medium"
               placeholder="••••••••"
             />
           </div>
@@ -80,15 +80,15 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 bg-teal-600 hover:bg-teal-500 text-white font-medium py-3 rounded-xl transition-colors shadow-lg shadow-teal-950 text-sm disabled:opacity-50"
+            className="w-full mt-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-slate-950 font-bold py-3.5 rounded-2xl transition-all shadow-lg shadow-teal-500/20 text-sm disabled:opacity-50 cursor-pointer active:scale-[0.98]"
           >
             {loading ? "Memproses..." : "Masuk ke Sistem"}
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-slate-800/80 flex items-center justify-center gap-2 text-xs text-slate-500">
-          <ShieldCheck className="w-4 h-4 text-teal-500" />
-          <span>Akses Terproteksi & Enskripsi Sesi Aman</span>
+        <div className="mt-8 pt-6 border-t border-slate-800/80 flex items-center justify-center gap-2 text-xs text-slate-500 font-mono">
+          <ShieldCheck className="w-4 h-4 text-teal-400" />
+          <span>Akses Terproteksi & Enskripsi Aman</span>
         </div>
       </div>
     </div>

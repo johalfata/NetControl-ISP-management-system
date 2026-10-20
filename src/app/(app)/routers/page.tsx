@@ -84,58 +84,58 @@ export default function RoutersPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">Router & MikroTik</h2>
-          <p className="text-sm text-slate-400 mt-1">Manajemen perangkat router dan monitoring jaringan.</p>
+          <h2 className="text-3xl font-extrabold tracking-tight text-white">Router & MikroTik Core</h2>
+          <p className="text-sm text-slate-400 mt-1.5">Manajemen perangkat router terdistribusi dan monitoring status jaringan real-time.</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-900/20 transition-all cursor-pointer"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-semibold bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-slate-950 shadow-lg shadow-teal-500/20 transition-all active:scale-[0.98] cursor-pointer"
         >
           + Tambah Router
         </button>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+      <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/50 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                <th className="p-4">Kode</th>
-                <th className="p-4">Nama Router</th>
-                <th className="p-4">Host / IP</th>
-                <th className="p-4">Port API</th>
-                <th className="p-4">Status Monitor</th>
-                <th className="p-4">Terakhir Diperbarui</th>
+              <tr className="border-b border-slate-800/80 bg-slate-950/60 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="p-5">Kode Router</th>
+                <th className="p-5">Nama Router</th>
+                <th className="p-5">Host / IP Address</th>
+                <th className="p-5">Port API</th>
+                <th className="p-5">Status Monitor</th>
+                <th className="p-5">Terakhir Diperbarui</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800 text-sm">
+            <tbody className="divide-y divide-slate-800/60 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
-                    Memuat data...
+                  <td colSpan={6} className="p-12 text-center text-slate-500">
+                    Memuat data router...
                   </td>
                 </tr>
               ) : (
                 routers.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-800/50 transition-colors">
-                    <td className="p-4 font-mono text-teal-400">{r.code}</td>
-                    <td className="p-4 font-semibold text-white">{r.name}</td>
-                    <td className="p-4 font-mono text-slate-200">{r.host}</td>
-                    <td className="p-4 font-mono text-slate-300">{r.apiPort}</td>
-                    <td className="p-4">
+                  <tr key={r.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="p-5 font-mono text-teal-400 font-semibold">{r.code}</td>
+                    <td className="p-5 font-bold text-white tracking-tight">{r.name}</td>
+                    <td className="p-5 font-mono text-slate-200">{r.host}</td>
+                    <td className="p-5 font-mono text-slate-300">{r.apiPort}</td>
+                    <td className="p-5">
                       <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold tracking-wide ${
                           r.isMonitoringEnabled
                             ? "bg-teal-500/10 text-teal-400 border border-teal-500/20"
-                            : "bg-slate-800 text-slate-400"
+                            : "bg-slate-800 text-slate-400 border border-slate-700"
                         }`}
                       >
                         {r.isMonitoringEnabled ? "Aktif" : "Nonaktif"}
                       </span>
                     </td>
-                    <td className="p-4 text-slate-400 text-xs">
+                    <td className="p-5 text-slate-400 text-xs font-mono">
                       {r.updatedAt ? new Date(r.updatedAt).toLocaleString("id-ID") : "-"}
                     </td>
                   </tr>
@@ -143,7 +143,7 @@ export default function RoutersPage() {
               )}
               {!loading && routers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                  <td colSpan={6} className="p-12 text-center text-slate-500">
                     Tidak ada router terdaftar. Klik tombol &quot;+ Tambah Router&quot; di atas untuk mendaftarkan router MikroTik.
                   </td>
                 </tr>
@@ -152,117 +152,116 @@ export default function RoutersPage() {
           </table>
         </div>
       </div>
-
       {/* Modal Tambah Router */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-slate-800">
-              <h3 className="text-lg font-bold text-white">Tambah Router MikroTik</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl w-full max-w-lg shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-slate-800/80 bg-slate-950/40">
+              <h3 className="text-xl font-extrabold text-white tracking-tight">Tambah Router MikroTik</h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-white text-xl font-bold cursor-pointer"
+                className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
               >
                 &times;
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
               {error && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl">
+                <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm rounded-2xl font-medium">
                   {error}
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Kode Router</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Kode Router</label>
                   <input
                     type="text"
                     required
                     placeholder="mis. RB-CORE-01"
                     value={form.code}
                     onChange={(e) => setForm({ ...form, code: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Nama Router</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Nama Router</label>
                   <input
                     type="text"
                     required
                     placeholder="mis. Router Utama"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all font-medium"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Host / IP Address</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Host / IP Address</label>
                   <input
                     type="text"
                     required
                     placeholder="192.168.1.1"
                     value={form.host}
                     onChange={(e) => setForm({ ...form, host: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-500 font-mono"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Port API</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Port API</label>
                   <input
                     type="number"
                     required
                     value={form.apiPort}
                     onChange={(e) => setForm({ ...form, apiPort: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-500 font-mono"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all font-mono"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Username API</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Username API</label>
                   <input
                     type="text"
                     required
                     value={form.username}
                     onChange={(e) => setForm({ ...form, username: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Password API</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Password API</label>
                   <input
                     type="password"
                     required
                     placeholder="••••••••"
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Catatan (Opsional)</label>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Catatan (Opsional)</label>
                 <textarea
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-teal-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all font-medium"
                 />
               </div>
-              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-800/80">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+                  className="px-5 py-2.5 rounded-2xl text-sm font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer active:scale-95"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl text-sm font-medium bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-900/20 transition-all disabled:opacity-50 cursor-pointer"
+                  className="px-6 py-2.5 rounded-2xl text-sm font-semibold bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-slate-950 shadow-lg shadow-teal-500/20 transition-all disabled:opacity-50 cursor-pointer active:scale-95"
                 >
                   {submitting ? "Menyimpan..." : "Simpan Router"}
                 </button>
