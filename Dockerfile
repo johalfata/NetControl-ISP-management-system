@@ -30,7 +30,7 @@ ENV PORT=4755
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 RUN npm ci --omit=dev \
- && npm install --no-save --omit=dev prisma@6.19.3 \
+ && npm install --no-save --omit=dev prisma@6.19.3 tsx@4.20.0 \
  && npx prisma generate \
  && rm -rf /root/.npm
 
